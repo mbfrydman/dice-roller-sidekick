@@ -1,0 +1,7 @@
+__*
+build
+env
+*.spec
+*.zip
+dist/rsrc
+dist/presets
