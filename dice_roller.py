@@ -1,6 +1,9 @@
 import tkinter as tk
 from functools import partial
 import os
+import discord
+from dotenv import load_dotenv
+import multiprocessing as mp
 
 class Application(tk.Frame):
     def __init__(self, master=None):
@@ -13,9 +16,14 @@ class Application(tk.Frame):
         self.buttonPresets = []
         self.buttonNamesVariables = []
         
+        self.rollWithAdvantage = tk.IntVar()
+        self.rollWithDisadvantage = tk.IntVar()
+        self.currentBuffer = tk.StringVar()
+        
         self.load_presets()
         self.create_widgets()
-
+        self.messageQueue = None
+       
     def create_widgets(self):
         
         #Generic Buttons
@@ -52,7 +60,12 @@ class Application(tk.Frame):
             button = tk.Button(self)
             button["text"] = "+" + str(i)
             button["command"] = command=partial(self.append_modifer, i)
-            button.grid(column=i%6, row=int(self.gridRows+ 2 + i/6), ipadx=10, padx=5, pady=5)
+            button.grid(column=i%self.gridColumns, row=int(self.gridRows+ 2 + i/self.gridColumns), ipadx=10, padx=5, pady=5)
+        
+        
+        tk.Checkbutton(self.master, text="Advantage d20?", variable=self.rollWithAdvantage).grid(row=5)
+        tk.Checkbutton(self.master, text="Disadvantage d20?", variable=self.rollWithDisadvantage).grid()
+
         
         
         #rolling controls
@@ -65,35 +78,44 @@ class Application(tk.Frame):
         button.grid(column=1, row=self.gridRows+4, ipadx=10, padx=5, pady=5)
         button["command"] = command=partial(self.clearDiceBuffer)
         
-        label = tk.Label(self)
-        label["text"]
+        tk.Label(self.master, textvariable=self.currentBuffer).grid()
         
         #save presets
         button = tk.Button(self)
         button["text"] = "Save Presets"
         button.grid(column=0, row=self.gridRows+5, ipadx=10, padx=5, pady=5)
         button["command"] = command=self.save_presets
+        
+        alwaysTopCheckbox = tk.IntVar()
+        alwaysTopCheckbox.set(1)
+        tk.Checkbutton(self.master, text="Always on top?", variable=alwaysTopCheckbox, command = partial(self.toggle_always_on_top, alwaysTopCheckbox)).grid(row=self.gridRows+5)
 
-
+    def toggle_always_on_top(self, toggle):
+        if toggle.get() == 1 : 
+            self.master.wm_attributes("-topmost", 1)
+        else:
+            self.master.wm_attributes("-topmost", 0)
+    
     def copyToClip(self, pos):
         self.master.clipboard_clear()
         self.master.clipboard_append(self.buttonPresets[pos]["value"])
-    
+        self.messageQueue.put(self.buttonPresets[pos]["value"])
+        
     def copyBufferToClip(self):
         self.master.clipboard_clear()
-        roll = "/r "
-        first= True
-        for die, die_occurence in self.diceBuffer.items():
-            if first:
-                roll += str(die_occurence) + die
-                first=False
-            else:
-                roll += "+" + str(die_occurence) + die
-        roll+="+" + self.modifier
+        
+        roll = self.get_current_buffer()
+            
         self.master.clipboard_append(roll)
+        self.messageQueue.put(roll)
+        self.clearDiceBuffer()
+        self.rollWithDisadvantage.set(0)
+        self.rollWithAdvantage.set(0)
 
     def clearDiceBuffer(self):
         self.diceBuffer = {}
+        self.modifier = ""
+        self.currentBuffer.set("")
         
     def changeButton(self ,pos , buttonCrap):
         popup = tk.Toplevel(self.master)
@@ -119,11 +141,13 @@ class Application(tk.Frame):
         popup.destroy()
         
     def add_die(self, die):
-        currentValue= self.diceBuffer.get(die, 0)
+        currentValue = self.diceBuffer.get(die, 0)
         self.diceBuffer[die] = currentValue + 1
+        self.currentBuffer.set(self.get_current_buffer())
      
     def append_modifer(self, modifier):
         self.modifier+=str(modifier)
+        self.currentBuffer.set(self.get_current_buffer())
         
     def load_presets(self):
         try:
@@ -155,15 +179,69 @@ class Application(tk.Frame):
         with open("presets\\defaults.txt", 'w') as fp:
             for button in self.buttonPresets:
                 fp.write(button["name"]+";"+button["value"]+"\n")
+                
+                
+    def get_current_buffer(self):
+        roll = "/r "
+        first= True
+        for die, die_occurence in self.diceBuffer.items():
+            if die == "d20":
+                if self.rollWithAdvantage.get():
+                    die = "d20k1"
+                    die_occurence = 2
+                elif self.rollWithDisadvantage.get():                
+                    die = "d20kl1"
+                    die_occurence = 2
+            if first:
+                roll += str(die_occurence) + die
+                first=False
+            else:
+                roll += "+" + str(die_occurence) + die
+                
+        if self.modifier != "":
+            roll+="+" + self.modifier
+            
+        return roll
+     
+     
+def discord_process(messageQueue):
+    load_dotenv()
+    TOKEN = os.getenv('DISCORD_TOKEN')
+    discord_client = discord.Client()
+    
+    @discord_client.event
+    async def on_ready():
+        dice_channel = discord_client.get_channel(694244882125946990)
+        while True:
+            message = messageQueue.get()
+            
+            if message == "DIE":
+                await discord_client.logout()
+                break
+            else:
+                await dice_channel.send(message)
+        
+    #discord_client.run(TOKEN)
+    userToken= 'NzAyMTk3ODI2MTMzNjg4NDQz.Xp9RGw.69272Va3DGo-dklwpE3s2eq-eik'
+    discord_client.run(userToken, bot=False)
+    
+def on_app_close():
+    messageQueue.put("DIE")
+    root.destroy()
 
-
-def yulia_popup(windowCrap):
-    print("Love You!")
-
-root = tk.Tk()
-root.title("NumbNut's stupid dice roller")
-app = Application(master=root)
-root.geometry("570x320+600+600")
-root.bind('t', yulia_popup)
-root.wm_attributes("-topmost", 1)
-app.mainloop()
+if __name__ == '__main__':
+    mp.freeze_support()
+    root = tk.Tk()
+    root.title("Frak's stupid dice roller")
+    app = Application(master=root)
+    root.geometry("+300+300")
+    root.wm_attributes("-topmost", 1)
+    root.protocol("WM_DELETE_WINDOW", on_app_close)
+    
+    ctx = mp.get_context('spawn')
+    messageQueue = ctx.Queue()
+    discordProcess = ctx.Process(target=discord_process, args=(messageQueue,))
+    discordProcess.start()
+    app.messageQueue = messageQueue
+    
+    app.mainloop()

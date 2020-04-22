@@ -1,9 +1,9 @@
-asdf;asdf
-notSet;2
-notSet;1
-notSet;2
-notSet;1
-notSet;2
+Caelynn 2 attack;/r repeat (d20+6, 2) #Caelynn 2 to hit - Not mad yet
+Caelynn 2 attacks;/r repeat (d8+3, 2) #flush flush - Take this
+Caelynn 3 attack;/r repeat (d20+6, 3) #Caelynn to hit - with fury
+Caelynn 3 attack;/r repeat (d8+3, 3) #flush flush, swoosh - Take this and this
+caelynn 5 attack;/r repeat (d20+6, 5) #Caelynn to hit - with Anger
+Caelynn 5 attacks;/r repeat (d8+3, 5) #flush flush, swoosh - Take this and this and that
 notSet;1
 notSet;2
 notSet;1
