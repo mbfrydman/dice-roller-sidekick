@@ -206,7 +206,7 @@ class Application(tk.Frame):
      
 def discord_process(messageQueue):
     load_dotenv()
-    TOKEN = os.getenv('DISCORD_TOKEN')
+    TOKEN = os.getenv('USER_TOKEN')
     discord_client = discord.Client()
     
     @discord_client.event
@@ -222,8 +222,7 @@ def discord_process(messageQueue):
                 await dice_channel.send(message)
         
     #discord_client.run(TOKEN)
-    userToken= 'NzAyMTk3ODI2MTMzNjg4NDQz.Xp9RGw.69272Va3DGo-dklwpE3s2eq-eik'
-    discord_client.run(userToken, bot=False)
+    discord_client.run(USERTOKEN, bot=False)
     
 def on_app_close():
     messageQueue.put("DIE")
