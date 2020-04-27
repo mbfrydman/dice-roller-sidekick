@@ -1,11 +1,13 @@
 import tkinter as tk
+from tkinter import ttk
+from ttkthemes import ThemedTk
 from functools import partial
 import os
 import discord
 from dotenv import load_dotenv
 import multiprocessing as mp
 
-class Application(tk.Frame):
+class Application(ttk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
         self.master = master
@@ -32,7 +34,7 @@ class Application(tk.Frame):
 
         for i, buts in enumerate(self.buttonPresets):
 
-                button = tk.Button(self)
+                button = ttk.Button(self)
                 button["textvariable"] = self.buttonNamesVariables[i]
                 button.grid(column=i%6, row=int(i/6), ipadx=10, padx=5, pady=5)
                 button["command"] = command=partial(self.copyToClip, i)
@@ -50,45 +52,45 @@ class Application(tk.Frame):
         for pos, die in enumerate(dice_files):
             photo = tk.PhotoImage(file = "rsrc\\" + die["file"])
             photoimage = photo.subsample(6, 6)
-            button = tk.Button(self, image=photoimage)
+            button = ttk.Button(self, image=photoimage)
             button.photo=photoimage
             button["command"] = command=partial(self.add_die, die["value"])
             button.grid(column=pos, row=self.gridRows+1)
         
         #modifiers
         for i in range(0,10):
-            button = tk.Button(self)
+            button = ttk.Button(self)
             button["text"] = "+" + str(i)
             button["command"] = command=partial(self.append_modifer, i)
             button.grid(column=i%self.gridColumns, row=int(self.gridRows+ 2 + i/self.gridColumns), ipadx=10, padx=5, pady=5)
         
         
-        tk.Checkbutton(self.master, text="Advantage d20?", variable=self.rollWithAdvantage).grid(row=5)
-        tk.Checkbutton(self.master, text="Disadvantage d20?", variable=self.rollWithDisadvantage).grid()
+        ttk.Checkbutton(self.master, text="Advantage d20?", variable=self.rollWithAdvantage).grid(row=5)
+        ttk.Checkbutton(self.master, text="Disadvantage d20?", variable=self.rollWithDisadvantage).grid()
 
         
         
         #rolling controls
-        button = tk.Button(self)
+        button = ttk.Button(self)
         button["text"] = "Roll!"
         button.grid(column=0, row=self.gridRows+4, ipadx=10, padx=5, pady=5)
         button["command"] = command=partial(self.copyBufferToClip)
-        button = tk.Button(self)
+        button = ttk.Button(self)
         button["text"] = "Clear!"
         button.grid(column=1, row=self.gridRows+4, ipadx=10, padx=5, pady=5)
         button["command"] = command=partial(self.clearDiceBuffer)
         
-        tk.Label(self.master, textvariable=self.currentBuffer).grid()
+        ttk.Label(self.master, textvariable=self.currentBuffer).grid()
         
         #save presets
-        button = tk.Button(self)
+        button = ttk.Button(self)
         button["text"] = "Save Presets"
         button.grid(column=0, row=self.gridRows+5, ipadx=10, padx=5, pady=5)
         button["command"] = command=self.save_presets
         
         alwaysTopCheckbox = tk.IntVar()
         alwaysTopCheckbox.set(1)
-        tk.Checkbutton(self.master, text="Always on top?", variable=alwaysTopCheckbox, command = partial(self.toggle_always_on_top, alwaysTopCheckbox)).grid(row=self.gridRows+5)
+        ttk.Checkbutton(self.master, text="Always on top?", variable=alwaysTopCheckbox, command = partial(self.toggle_always_on_top, alwaysTopCheckbox)).grid(row=self.gridRows+5)
 
     def toggle_always_on_top(self, toggle):
         if toggle.get() == 1 : 
@@ -118,20 +120,20 @@ class Application(tk.Frame):
         self.currentBuffer.set("")
         
     def changeButton(self ,pos , buttonCrap):
-        popup = tk.Toplevel(self.master)
+        popup = ttk.Toplevel(self.master)
         popup.wm_title("Change Button")
         popup.tkraise(self.master) # This just tells the message to be on top of the root window.
         x_pos = self.master.winfo_x()
         y_pos = self.master.winfo_y()
         popup.geometry("+" + str(x_pos + 185) + "+" + str(y_pos + 129))
         
-        tk.Label(popup, text="New Name for Button:").grid(column=0,row=0)
-        textName=tk.Entry(popup)
+        ttk.Label(popup, text="New Name for Button:").grid(column=0,row=0)
+        textName=ttk.Entry(popup)
         textName.grid(column=1,row=0)
-        tk.Label(popup, text="New Value for Button:").grid(column=0,row=1)
-        textValue=tk.Entry(popup)
+        ttk.Label(popup, text="New Value for Button:").grid(column=0,row=1)
+        textValue=ttk.Entry(popup)
         textValue.grid(column=1,row=1)
-        tk.Button(popup, text="Save", command = partial(self.saveToButtons, pos, textName, textValue, popup)).grid(column=1,row=2)
+        ttk.Button(popup, text="Save", command = partial(self.saveToButtons, pos, textName, textValue, popup)).grid(column=1,row=2)
         
     def saveToButtons(self, pos, buttonName, buttonValue, popup):
         self.buttonPresets[pos]["name"] = buttonName.get()
@@ -206,7 +208,8 @@ class Application(tk.Frame):
      
 def discord_process(messageQueue):
     load_dotenv()
-    TOKEN = os.getenv('USER_TOKEN')
+    USER_TOKEN = os.getenv('USER_TOKEN')
+    BOT_TOKEN = os.getenv('DISCORD_TOKEN')
     discord_client = discord.Client()
     
     @discord_client.event
@@ -222,7 +225,7 @@ def discord_process(messageQueue):
                 await dice_channel.send(message)
         
     #discord_client.run(TOKEN)
-    discord_client.run(USERTOKEN, bot=False)
+    discord_client.run(BOT_TOKEN, bot=True)
     
 def on_app_close():
     messageQueue.put("DIE")
@@ -230,7 +233,8 @@ def on_app_close():
 
 if __name__ == '__main__':
     mp.freeze_support()
-    root = tk.Tk()
+    
+    root = ThemedTk(theme="equilux")
     root.title("Frak's stupid dice roller")
     app = Application(master=root)
     root.geometry("+300+300")

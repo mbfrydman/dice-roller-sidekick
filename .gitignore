@@ -1,6 +1,6 @@
 __*
 build
-env
+.env
 *.spec
 *.zip
 dist/rsrc
